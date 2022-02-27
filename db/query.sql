@@ -45,7 +45,7 @@ VALUES ("firstxname", "lastxname", 2, 4)
 -- role is list, supervisor is list of ALL EMPLOYEES, doesn't have to be preexisting superv... it's just the employee ID. SELECT CONCAT(employees.first_name, " ", employees.last_name) AS SUPERVISOR FROM employees; also include none option. nah I prob need empl ID too so that when user assigns the employee as new employee's supervisor - it uses the supervisor's ID to assign to the new employee.
 
 -- UPDATE
--- UPDATE ROLE:
+-- UPDATE EMPLOYEE ROLE:
 -- but the prompt SELECTS employee first, then SELECTS role, both in list form.
 SELECT CONCAT(first_name, " ", last_name) AS employee
 FROM employees;
