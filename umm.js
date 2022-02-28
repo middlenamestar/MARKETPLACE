@@ -54,6 +54,12 @@ const Home = () => {
                 case 'Add a role':
                     addRole();
                     break;
+                case 'Add an employee':
+                    addEmployee();
+                    break;
+                case 'Edit employee\'s role':
+                    editEmplRole();
+                    break;
             };
         });
 };
@@ -216,6 +222,163 @@ const addRole = () => {
         });
 };
 
+let allRoles = [];
+marketplace.query('SELECT role FROM roles', (err, results) => {
+    for(const role of results) {
+        allRoles.push(role.role);
+    }
+});
 
+let assignSupervisor = [];
+marketplace.query('SELECT CONCAT(first_name, " ", last_name) AS name FROM employees', (err, results) => {
+    for(const employee of results) {
+        assignSupervisor.push(employee.name);
+    }
+    assignSupervisor.push('None');
+});
+
+// add employee
+const addEmployee = () => {
+    ui.log.write('Congrats on a new employee!');
+    inquirer
+        .prompt([
+            {
+                type: 'input',
+                name: 'add_empl_firstn',
+                message: 'What is their first name?'
+            },
+            {
+                type: 'input',
+                name: 'add_empl_lastn',
+                message: 'What is their last name?'
+            },
+            {
+                type: 'list',
+                name: 'add_empl_role',
+                message: 'Assign their role:',
+                choices: allRoles
+            },
+            {
+                type: 'list',
+                name: 'add_empl_super',
+                message: 'Assign their supervisor:',
+                choices: assignSupervisor
+            },
+        ])
+        .then((response) => {
+            const newEmplFirstN = response.add_empl_firstn;
+            const newEmplLastN = response.add_empl_lastn;
+            const newEmplRole = response.add_empl_role;
+            // select employee ID from response.
+            if (response.add_empl_super === 'None') {
+                marketplace.query(`SELECT role_id FROM roles WHERE role="${newEmplRole}"`,
+                    (err, results) => {
+                        marketplace.query(`INSERT INTO employees (first_name, last_name, role, supervisor)
+                        VALUES ("${newEmplFirstN}", "${newEmplLastN}", ${results[0].role_id}, NULL)`);
+                    }
+                )
+            } else {
+                marketplace.query(
+                    `SELECT employee_id FROM employees WHERE CONCAT(first_name, " ", last_name)="${response.add_empl_super}"`,
+                    (err, results) => {
+                        // set the supervisor var here.
+                        const newEmplSuper = results[0].employee_id;
+                        // this query is to select role ID from what it currently is: a string.
+                        marketplace.query(`SELECT role_id FROM roles WHERE role="${newEmplRole}"`,
+                            (err, results) => {
+                            // using the results HERE to get the role ID. and finally insert everything into employees table.
+                            marketplace.query(`INSERT INTO employees (first_name, last_name, role, supervisor)
+                            VALUES ("${newEmplFirstN}", "${newEmplLastN}", ${results[0].role_id}, ${newEmplSuper})`);
+                            }
+                        )
+                    }
+                )
+            };
+            console.log('New employee added to database.');
+            inquirer
+                .prompt([
+                    {
+                        type: 'list',
+                        name: 'next',
+                        message: ' ',
+                        choices: ['View employees', 'Home']
+                    }
+                ])
+                .then((response) => {
+                    switch(response.next) {
+                        case 'View employees':
+                            viewEmployees();
+                            break;
+                        case 'Home':
+                            Home();
+                            break;
+                    };
+                });
+        });
+};
+
+let allEmployees = [];
+marketplace.query('SELECT CONCAT(first_name, " ", last_name) AS name FROM employees', (err, results) => {
+    for(const employee of results) {
+        allEmployees.push(employee.name);
+    }
+});
+
+// edit employee role
+const editEmplRole = () => {
+    inquirer
+        .prompt([
+            {
+                type: 'list',
+                name: 'edit_empl',
+                message: 'Which employee?',
+                choices: allEmployees
+            },
+            {
+                type: 'list',
+                name: 'update_role',
+                message: 'Assign their new role:',
+                choices: allRoles
+            },
+        ])
+        .then((response) => {
+            const updatedRole = response.update_role;
+            marketplace.query(`SELECT employee_id
+                FROM employees WHERE CONCAT(first_name, " ", last_name)="${response.edit_empl}"`,
+                (err, results) => {
+                    const emplToEdit = results[0].employee_id;
+                    marketplace.query(`SELECT role_id
+                        FROM roles WHERE role="${updatedRole}"`,
+                        (err, results) => {
+                            marketplace.query(`UPDATE employees 
+                                SET role = ${results[0].role_id}
+                                WHERE employee_id = ${emplToEdit}`
+                            )
+                        }
+                    )
+                }
+            )
+            console.log('Employee\'s role has been updated.');
+            inquirer
+                .prompt([
+                    {
+                        type: 'list',
+                        name: 'next',
+                        message: ' ',
+                        choices: ['View employees', 'Home']
+                    }
+                ])
+                .then((response) => {
+                    switch(response.next) {
+                        case 'View employees':
+                            viewEmployees();
+                            break;
+                        case 'Home':
+                            Home();
+                            break;
+                    };
+                });
+        });
+};
 
 Home();
